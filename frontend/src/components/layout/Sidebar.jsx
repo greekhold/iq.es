@@ -11,6 +11,8 @@ import {
     FiBarChart2,
     FiLogOut,
     FiRefreshCw,
+    FiShoppingBag,
+    FiCreditCard,
 } from 'react-icons/fi';
 
 const menuItems = {
@@ -20,8 +22,11 @@ const menuItems = {
         { path: '/prices', icon: FiDollarSign, label: 'Harga' },
         { path: '/customers', icon: FiUsers, label: 'Customer' },
         { path: '/sales', icon: FiShoppingCart, label: 'Penjualan' },
+        { path: '/supplies', icon: FiBox, label: 'Bahan/Supplies' },
+        { path: '/purchases', icon: FiShoppingBag, label: 'Pembelian' },
+        { path: '/expenses', icon: FiCreditCard, label: 'Pengeluaran' },
         { path: '/production', icon: FiSettings, label: 'Produksi' },
-        { path: '/inventory', icon: FiBox, label: 'Stok' },
+        { path: '/inventory', icon: FiBox, label: 'Stok Es' },
         { path: '/reports', icon: FiBarChart2, label: 'Laporan' },
     ],
     ADMIN: [
@@ -30,8 +35,11 @@ const menuItems = {
         { path: '/prices', icon: FiDollarSign, label: 'Harga' },
         { path: '/customers', icon: FiUsers, label: 'Customer' },
         { path: '/sales', icon: FiShoppingCart, label: 'Penjualan' },
+        { path: '/supplies', icon: FiBox, label: 'Bahan/Supplies' },
+        { path: '/purchases', icon: FiShoppingBag, label: 'Pembelian' },
+        { path: '/expenses', icon: FiCreditCard, label: 'Pengeluaran' },
         { path: '/production', icon: FiSettings, label: 'Produksi' },
-        { path: '/inventory', icon: FiBox, label: 'Stok' },
+        { path: '/inventory', icon: FiBox, label: 'Stok Es' },
         { path: '/reports', icon: FiBarChart2, label: 'Laporan' },
     ],
     KASIR_PABRIK: [

@@ -1,205 +1,274 @@
 import { useState, useEffect } from 'react';
-import { FiCalendar, FiDownload, FiTrendingUp, FiShoppingCart, FiPackage } from 'react-icons/fi';
+import { FiCalendar, FiTrendingUp, FiShoppingCart, FiDownload, FiShoppingBag, FiCreditCard, FiDollarSign } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import { salesApi, productionApi, inventoryApi } from '../api';
+import { salesApi, inventoryApi, purchasesApi, expensesApi } from '../api';
 
 export default function Reports() {
     const [loading, setLoading] = useState(true);
-    const [dateRange, setDateRange] = useState({
-        start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0],
+    const [filters, setFilters] = useState({
+        start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        end_date: new Date().toISOString().split('T')[0],
     });
-    const [reportData, setReportData] = useState({
-        totalSales: 0,
-        totalAmount: 0,
-        totalProduction: {},
-        currentStock: [],
-        salesByDay: [],
-    });
+    const [salesData, setSalesData] = useState([]);
+    const [stocks, setStocks] = useState([]);
+    const [purchasesTotal, setPurchasesTotal] = useState(0);
+    const [expensesTotal, setExpensesTotal] = useState(0);
+    const [expensesByCategory, setExpensesByCategory] = useState([]);
 
     useEffect(() => {
-        loadReport();
+        loadData();
     }, []);
 
-    const loadReport = async () => {
+    const loadData = async () => {
         setLoading(true);
         try {
-            const [salesRes, productionRes, stockRes] = await Promise.all([
-                salesApi.getAll({ start_date: dateRange.start, end_date: dateRange.end, per_page: 1000 }),
-                productionApi.getSummary(dateRange.start, dateRange.end).catch(() => ({ data: {} })),
-                inventoryApi.getStock(),
-            ]);
+            // Load data separately with fallbacks
+            let salesResult = [];
+            let stockResult = [];
+            let purchasesTotalResult = 0;
+            let expensesTotalResult = 0;
+            let expensesByCategoryResult = [];
 
-            const sales = salesRes.data?.data || salesRes.data || [];
-            const totalAmount = sales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0);
+            try {
+                const salesRes = await salesApi.getAll({ start_date: filters.start_date, end_date: filters.end_date });
+                salesResult = salesRes?.data || salesRes || [];
+            } catch (e) {
+                console.error('Failed to load sales:', e);
+            }
 
-            // Group sales by date
-            const salesByDay = {};
-            sales.forEach((sale) => {
-                const date = sale.sold_at?.split('T')[0];
-                if (date) {
-                    salesByDay[date] = (salesByDay[date] || 0) + parseFloat(sale.total_amount || 0);
-                }
-            });
+            try {
+                const stockRes = await inventoryApi.getStock();
+                stockResult = stockRes || [];
+            } catch (e) {
+                console.error('Failed to load stock:', e);
+            }
 
-            setReportData({
-                totalSales: sales.length,
-                totalAmount,
-                totalProduction: productionRes.data || {},
-                currentStock: stockRes.data || [],
-                salesByDay: Object.entries(salesByDay).map(([date, amount]) => ({ date, amount })),
-            });
+            try {
+                const purchasesSummary = await purchasesApi.getSummary(filters.start_date, filters.end_date);
+                purchasesTotalResult = purchasesSummary?.total_purchases || 0;
+            } catch (e) {
+                console.error('Failed to load purchases summary:', e);
+            }
+
+            try {
+                const expensesSummary = await expensesApi.getSummary(filters.start_date, filters.end_date);
+                expensesTotalResult = expensesSummary?.total_expenses || 0;
+                expensesByCategoryResult = expensesSummary?.by_category || [];
+            } catch (e) {
+                console.error('Failed to load expenses summary:', e);
+            }
+
+            setSalesData(salesResult);
+            setStocks(stockResult);
+            setPurchasesTotal(purchasesTotalResult);
+            setExpensesTotal(expensesTotalResult);
+            setExpensesByCategory(expensesByCategoryResult);
         } catch (error) {
-            toast.error('Gagal memuat laporan');
+            console.error('Failed to load data:', error);
+            toast.error('Gagal memuat data laporan');
         } finally {
             setLoading(false);
         }
     };
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR',
-            minimumFractionDigits: 0,
-        }).format(amount);
+    const handleFilter = (e) => {
+        e.preventDefault();
+        loadData();
     };
 
-    const formatDate = (dateStr) => {
-        return new Date(dateStr).toLocaleDateString('id-ID', {
-            day: '2-digit',
-            month: 'short',
-        });
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount || 0);
     };
+
+    // Calculate summary with null checks
+    const completedSales = Array.isArray(salesData) ? salesData.filter(s => s.status === 'completed') : [];
+    const totalSales = completedSales.reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0);
+    const totalTransactions = completedSales.length;
+    const averageTransaction = totalTransactions > 0 ? totalSales / totalTransactions : 0;
+    const netProfit = totalSales - (purchasesTotal || 0) - (expensesTotal || 0);
+
+    // Daily sales for chart with null check
+    const dailySales = completedSales.reduce((acc, sale) => {
+        const date = new Date(sale.sold_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+        acc[date] = (acc[date] || 0) + parseFloat(sale.total_amount || 0);
+        return acc;
+    }, {});
+
+    const dailySalesEntries = Object.entries(dailySales);
+    const maxDaily = dailySalesEntries.length > 0 ? Math.max(...Object.values(dailySales), 1) : 1;
 
     return (
-        <div className="space-y-6">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Laporan & Statistik</h1>
-                    <p className="text-gray-500 mt-1">Ringkasan performa bisnis</p>
+                    <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1F2937', margin: 0 }}>Laporan Keuangan</h1>
+                    <p style={{ color: '#6B7280', marginTop: '4px' }}>Ringkasan penjualan, pembelian, dan pengeluaran</p>
                 </div>
-                <button className="btn btn-secondary inline-flex items-center gap-2">
-                    <FiDownload className="w-5 h-5" />
-                    <span>Export PDF</span>
+                <button className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FiDownload /> Export PDF
                 </button>
             </div>
 
-            {/* Date Filter */}
+            {/* Filters */}
             <div className="card">
-                <div className="flex flex-wrap items-end gap-4">
+                <form onSubmit={handleFilter} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '16px' }}>
                     <div>
                         <label className="label">Dari Tanggal</label>
-                        <input
-                            type="date"
-                            value={dateRange.start}
-                            onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                            className="input"
-                        />
+                        <input type="date" value={filters.start_date} onChange={(e) => setFilters({ ...filters, start_date: e.target.value })} className="input" />
                     </div>
                     <div>
                         <label className="label">Sampai Tanggal</label>
-                        <input
-                            type="date"
-                            value={dateRange.end}
-                            onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                            className="input"
-                        />
+                        <input type="date" value={filters.end_date} onChange={(e) => setFilters({ ...filters, end_date: e.target.value })} className="input" />
                     </div>
-                    <button onClick={loadReport} className="btn btn-primary inline-flex items-center gap-2">
-                        <FiCalendar className="w-4 h-4" />
-                        Terapkan
+                    <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FiCalendar /> Terapkan
                     </button>
-                </div>
+                </form>
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center py-12">
-                    <div className="w-8 h-8 border-4 border-cyan-600 border-t-transparent rounded-full animate-spin" />
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}>
+                    <div style={{ width: '32px', height: '32px', border: '4px solid #00ACC1', borderTopColor: 'transparent', borderRadius: '50%' }} className="animate-spin" />
                 </div>
             ) : (
                 <>
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="card">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                                    <FiTrendingUp className="w-6 h-6 text-green-600" />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+                        <div className="card" style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)', color: 'white' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ width: '48px', height: '48px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <FiTrendingUp style={{ width: '24px', height: '24px' }} />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500">Total Omzet</p>
-                                    <p className="text-2xl font-bold text-gray-800">{formatCurrency(reportData.totalAmount)}</p>
+                                    <p style={{ fontSize: '14px', opacity: 0.9, margin: 0 }}>Total Penjualan</p>
+                                    <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{formatCurrency(totalSales)}</p>
                                 </div>
                             </div>
                         </div>
-                        <div className="card">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                                    <FiShoppingCart className="w-6 h-6 text-blue-600" />
+
+                        <div className="card" style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', color: 'white' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ width: '48px', height: '48px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <FiShoppingBag style={{ width: '24px', height: '24px' }} />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500">Total Transaksi</p>
-                                    <p className="text-2xl font-bold text-gray-800">{reportData.totalSales}</p>
+                                    <p style={{ fontSize: '14px', opacity: 0.9, margin: 0 }}>Total Pembelian</p>
+                                    <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{formatCurrency(purchasesTotal)}</p>
                                 </div>
                             </div>
                         </div>
-                        <div className="card">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                                    <FiPackage className="w-6 h-6 text-purple-600" />
+
+                        <div className="card" style={{ background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)', color: 'white' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ width: '48px', height: '48px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <FiCreditCard style={{ width: '24px', height: '24px' }} />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500">Rata-rata/Transaksi</p>
-                                    <p className="text-2xl font-bold text-gray-800">
-                                        {formatCurrency(reportData.totalSales > 0 ? reportData.totalAmount / reportData.totalSales : 0)}
-                                    </p>
+                                    <p style={{ fontSize: '14px', opacity: 0.9, margin: 0 }}>Total Pengeluaran</p>
+                                    <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{formatCurrency(expensesTotal)}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card" style={{ background: netProfit >= 0 ? 'linear-gradient(135deg, #06B6D4 0%, #0891B2 100%)' : 'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)', color: 'white' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ width: '48px', height: '48px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <FiDollarSign style={{ width: '24px', height: '24px' }} />
+                                </div>
+                                <div>
+                                    <p style={{ fontSize: '14px', opacity: 0.9, margin: 0 }}>Laba Bersih</p>
+                                    <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{formatCurrency(netProfit)}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Sales Chart (Simple Bar) */}
-                    <div className="card">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4">Penjualan per Hari</h2>
-                        {reportData.salesByDay.length === 0 ? (
-                            <p className="text-gray-400 text-center py-8">Tidak ada data penjualan</p>
-                        ) : (
-                            <div className="space-y-3">
-                                {reportData.salesByDay.sort((a, b) => a.date.localeCompare(b.date)).map((day) => {
-                                    const maxAmount = Math.max(...reportData.salesByDay.map((d) => d.amount));
-                                    const percentage = maxAmount > 0 ? (day.amount / maxAmount) * 100 : 0;
-                                    return (
-                                        <div key={day.date} className="flex items-center gap-4">
-                                            <div className="w-20 text-sm text-gray-600">{formatDate(day.date)}</div>
-                                            <div className="flex-1 h-8 bg-gray-100 rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-full transition-all duration-500"
-                                                    style={{ width: `${percentage}%` }}
-                                                />
-                                            </div>
-                                            <div className="w-32 text-right font-semibold text-gray-800">
-                                                {formatCurrency(day.amount)}
-                                            </div>
+                    {/* Transaction Stats */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px' }}>
+                        <div className="card">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ width: '40px', height: '40px', backgroundColor: '#DBEAFE', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <FiShoppingCart style={{ color: '#2563EB' }} />
+                                </div>
+                                <div>
+                                    <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>Total Transaksi</p>
+                                    <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', margin: 0 }}>{totalTransactions}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ width: '40px', height: '40px', backgroundColor: '#D1FAE5', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <FiTrendingUp style={{ color: '#059669' }} />
+                                </div>
+                                <div>
+                                    <p style={{ fontSize: '12px', color: '#6B7280', margin: 0 }}>Rata-rata/Transaksi</p>
+                                    <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', margin: 0 }}>{formatCurrency(averageTransaction)}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+                        {/* Daily Sales Chart */}
+                        <div className="card">
+                            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '16px' }}>Grafik Penjualan Harian</h3>
+                            {dailySalesEntries.length === 0 ? (
+                                <p style={{ color: '#6B7280', textAlign: 'center', padding: '32px' }}>Tidak ada data penjualan</p>
+                            ) : (
+                                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '200px', overflowX: 'auto', paddingBottom: '8px' }}>
+                                    {dailySalesEntries.map(([date, amount]) => (
+                                        <div key={date} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '50px' }}>
+                                            <div style={{
+                                                width: '40px',
+                                                height: `${Math.max((amount / maxDaily) * 160, 10)}px`,
+                                                background: 'linear-gradient(180deg, #00ACC1 0%, #0097A7 100%)',
+                                                borderRadius: '6px 6px 0 0',
+                                            }} />
+                                            <p style={{ fontSize: '10px', color: '#6B7280', marginTop: '4px', textAlign: 'center' }}>{date}</p>
                                         </div>
-                                    );
-                                })}
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Expense Breakdown */}
+                        {expensesByCategory.length > 0 && (
+                            <div className="card">
+                                <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '16px' }}>Breakdown Pengeluaran</h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {expensesByCategory.map((item, index) => (
+                                        <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: '#4B5563' }}>{item.category?.name || 'Lainnya'}</span>
+                                            <span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(item.total)}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
 
-                    {/* Current Stock */}
-                    <div className="card">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4">Stok Saat Ini</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {reportData.currentStock.map((stock) => (
-                                <div key={stock.id} className="p-4 bg-gray-50 rounded-xl text-center">
-                                    <p className="text-sm text-gray-500">{stock.name}</p>
-                                    <p className="text-2xl font-bold text-gray-800 mt-1">{stock.current_stock}</p>
-                                    <p className="text-xs text-gray-400">pcs</p>
-                                </div>
-                            ))}
+                    {/* Stock Overview */}
+                    {Array.isArray(stocks) && stocks.length > 0 && (
+                        <div className="card">
+                            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '16px' }}>Stok Es Saat Ini</h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+                                {stocks.map((stock) => (
+                                    <div key={stock.product_id || stock.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '12px' }}>
+                                        <div style={{ width: '48px', height: '48px', backgroundColor: '#E0F7FA', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <span style={{ fontSize: '24px' }}>🧊</span>
+                                        </div>
+                                        <div>
+                                            <p style={{ fontWeight: '600', color: '#1F2937', margin: 0 }}>{stock.name}</p>
+                                            <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#00ACC1', margin: 0 }}>{stock.current_stock || 0} <span style={{ fontSize: '14px', fontWeight: 'normal', color: '#6B7280' }}>pcs</span></p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </>
             )}
         </div>

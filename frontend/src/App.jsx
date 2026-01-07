@@ -13,6 +13,9 @@ import Inventory from './pages/Inventory';
 import Production from './pages/Production';
 import Prices from './pages/Prices';
 import Reports from './pages/Reports';
+import Supplies from './pages/Supplies';
+import Purchases from './pages/Purchases';
+import Expenses from './pages/Expenses';
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -119,6 +122,9 @@ function App() {
           <Route path="customers" element={<Customers />} />
           <Route path="production" element={<Production />} />
           <Route path="inventory" element={<Inventory />} />
+          <Route path="supplies" element={<Supplies />} />
+          <Route path="purchases" element={<Purchases />} />
+          <Route path="expenses" element={<Expenses />} />
           <Route path="reports" element={<Reports />} />
         </Route>
 

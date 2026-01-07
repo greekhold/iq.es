@@ -16,13 +16,15 @@ use App\Models\SaleItem;
 use App\Models\User;
 use App\Services\Inventory\InventoryService;
 use App\Services\Pricing\PricingService;
+use App\Services\Supply\SupplyService;
 use Illuminate\Support\Facades\DB;
 
 class SalesService
 {
     public function __construct(
         private InventoryService $inventoryService,
-        private PricingService $pricingService
+        private PricingService $pricingService,
+        private SupplyService $supplyService
     ) {
     }
 
@@ -80,6 +82,15 @@ class SalesService
                     $item['quantity'],
                     $user,
                     $sale
+                );
+
+                // AUTO-DEDUCT SUPPLIES linked to this product
+                $this->supplyService->deductForSale(
+                    $product->id,
+                    $item['quantity'],
+                    Sale::class,
+                    $sale->id,
+                    $user->id
                 );
             }
 

@@ -2,11 +2,14 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\PriceController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductionController;
+use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\SalesController;
+use App\Http\Controllers\SupplyController;
 use App\Http\Controllers\SyncController;
 use Illuminate\Support\Facades\Route;
 
@@ -76,6 +79,32 @@ Route::middleware(['jwt.auth'])->group(function () {
     });
     Route::middleware(['role:ADMIN'])->group(function () {
         Route::post('sales/{id}/cancel', [SalesController::class, 'cancel']);
+    });
+
+    // Supplies (Bahan Baku)
+    Route::get('supplies', [SupplyController::class, 'index']);
+    Route::get('supplies/low-stock', [SupplyController::class, 'lowStock']);
+    Route::middleware(['role:ADMIN'])->group(function () {
+        Route::post('supplies', [SupplyController::class, 'store']);
+        Route::put('supplies/{supply}', [SupplyController::class, 'update']);
+        Route::post('supplies/{supply}/adjust', [SupplyController::class, 'adjust']);
+    });
+
+    // Purchases (Pembelian Bahan)
+    Route::get('purchases', [PurchaseController::class, 'index']);
+    Route::get('purchases/summary', [PurchaseController::class, 'summary']);
+    Route::get('purchases/{id}', [PurchaseController::class, 'show']);
+    Route::middleware(['role:ADMIN'])->group(function () {
+        Route::post('purchases', [PurchaseController::class, 'store']);
+    });
+
+    // Expenses (Pengeluaran Operasional)
+    Route::get('expenses', [ExpenseController::class, 'index']);
+    Route::get('expenses/summary', [ExpenseController::class, 'summary']);
+    Route::get('expenses/categories', [ExpenseController::class, 'categories']);
+    Route::middleware(['role:ADMIN'])->group(function () {
+        Route::post('expenses', [ExpenseController::class, 'store']);
+        Route::post('expenses/categories', [ExpenseController::class, 'storeCategory']);
     });
 
     // Sync (for offline transactions)

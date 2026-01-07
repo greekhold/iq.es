@@ -146,3 +146,88 @@ export const syncApi = {
         return response.data;
     },
 };
+
+// NEW: Supplies API
+export const suppliesApi = {
+    getAll: async (activeOnly = true) => {
+        const response = await client.get('/supplies', {
+            params: { active_only: activeOnly },
+        });
+        return response.data;
+    },
+
+    getLowStock: async () => {
+        const response = await client.get('/supplies/low-stock');
+        return response.data;
+    },
+
+    create: async (data) => {
+        const response = await client.post('/supplies', data);
+        return response.data;
+    },
+
+    update: async (id, data) => {
+        const response = await client.put(`/supplies/${id}`, data);
+        return response.data;
+    },
+
+    adjust: async (id, quantity) => {
+        const response = await client.post(`/supplies/${id}/adjust`, { quantity });
+        return response.data;
+    },
+};
+
+// NEW: Purchases API
+export const purchasesApi = {
+    getAll: async (params = {}) => {
+        const response = await client.get('/purchases', { params });
+        return response.data;
+    },
+
+    getById: async (id) => {
+        const response = await client.get(`/purchases/${id}`);
+        return response.data;
+    },
+
+    create: async (data) => {
+        const response = await client.post('/purchases', data);
+        return response.data;
+    },
+
+    getSummary: async (startDate, endDate) => {
+        const response = await client.get('/purchases/summary', {
+            params: { start_date: startDate, end_date: endDate },
+        });
+        return response.data;
+    },
+};
+
+// NEW: Expenses API
+export const expensesApi = {
+    getAll: async (params = {}) => {
+        const response = await client.get('/expenses', { params });
+        return response.data;
+    },
+
+    create: async (data) => {
+        const response = await client.post('/expenses', data);
+        return response.data;
+    },
+
+    getSummary: async (startDate, endDate) => {
+        const response = await client.get('/expenses/summary', {
+            params: { start_date: startDate, end_date: endDate },
+        });
+        return response.data;
+    },
+
+    getCategories: async () => {
+        const response = await client.get('/expenses/categories');
+        return response.data;
+    },
+
+    createCategory: async (data) => {
+        const response = await client.post('/expenses/categories', data);
+        return response.data;
+    },
+};
