@@ -70,19 +70,22 @@ class SalesService
                     'subtotal' => $item['subtotal'],
                 ]);
 
-                // Record inventory movement
                 $product = Product::find($item['product_id']);
-                $movementType = $channel === SalesChannel::FACTORY
-                    ? MovementType::SALE_FACTORY
-                    : MovementType::SALE_FIELD;
 
-                $this->inventoryService->recordMovement(
-                    $product,
-                    $movementType,
-                    $item['quantity'],
-                    $user,
-                    $sale
-                );
+                // Record inventory movement ONLY for products that require stock
+                if ($product->requires_stock) {
+                    $movementType = $channel === SalesChannel::FACTORY
+                        ? MovementType::SALE_FACTORY
+                        : MovementType::SALE_FIELD;
+
+                    $this->inventoryService->recordMovement(
+                        $product,
+                        $movementType,
+                        $item['quantity'],
+                        $user,
+                        $sale
+                    );
+                }
 
                 // AUTO-DEDUCT SUPPLIES linked to this product
                 $this->supplyService->deductForSale(
@@ -126,12 +129,14 @@ class SalesService
                 );
             }
 
-            // Validate stock availability
-            $currentStock = $this->inventoryService->calculateStock($product->id);
-            if ($currentStock < $item['quantity']) {
-                throw new InsufficientStockException(
-                    "Stok {$product->name} tidak mencukupi. Tersedia: {$currentStock}, diminta: {$item['quantity']}"
-                );
+            // Validate stock availability (only for products that require stock)
+            if ($product->requires_stock) {
+                $currentStock = $this->inventoryService->calculateStock($product->id);
+                if ($currentStock < $item['quantity']) {
+                    throw new InsufficientStockException(
+                        "Stok {$product->name} tidak mencukupi. Tersedia: {$currentStock}, diminta: {$item['quantity']}"
+                    );
+                }
             }
 
             $validatedItems[] = [

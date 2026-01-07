@@ -2,6 +2,7 @@
 
 namespace App\Services\Supply;
 
+use App\Models\Product;
 use App\Models\Supply;
 use App\Models\SupplyMovement;
 use Illuminate\Support\Facades\DB;
@@ -38,18 +39,18 @@ class SupplyService
     public function deductForSale(string $productId, int $saleQuantity, ?string $referenceType = null, ?string $referenceId = null, ?string $userId = null): array
     {
         return DB::transaction(function () use ($productId, $saleQuantity, $referenceType, $referenceId, $userId) {
-            // Find supplies linked to this product
-            $supplies = Supply::where('linked_product_id', $productId)
+            $product = Product::find($productId);
+            $movements = [];
+
+            // 1. Deduct supplies linked directly to this product (e.g., Plastik Es)
+            $linkedSupplies = Supply::where('linked_product_id', $productId)
                 ->where('is_active', true)
                 ->lockForUpdate()
                 ->get();
 
-            $movements = [];
-
-            foreach ($supplies as $supply) {
+            foreach ($linkedSupplies as $supply) {
                 $deductQuantity = $supply->deduct_per_sale * $saleQuantity;
 
-                // Allow negative stock (warning only)
                 $newBalance = $supply->current_stock - $deductQuantity;
                 $supply->update(['current_stock' => $newBalance]);
 
@@ -63,6 +64,46 @@ class SupplyService
                     'created_by' => $userId,
                     'created_at' => now(),
                 ]);
+            }
+
+            // 2. For GALON products, also deduct Galon Kosong and Tutup Galon
+            if ($product && str_starts_with($product->sku, 'GLN-')) {
+                $galonSupply = Supply::where('sku', 'GLN-EMPTY')->lockForUpdate()->first();
+                $tutupSupply = Supply::where('sku', 'TTP-GLN')->lockForUpdate()->first();
+
+                // Deduct Galon Kosong
+                if ($galonSupply) {
+                    $newBalance = $galonSupply->current_stock - $saleQuantity;
+                    $galonSupply->update(['current_stock' => $newBalance]);
+
+                    $movements[] = SupplyMovement::create([
+                        'supply_id' => $galonSupply->id,
+                        'movement_type' => 'SALE_OUT',
+                        'quantity' => -$saleQuantity,
+                        'balance_after' => $newBalance,
+                        'reference_type' => $referenceType,
+                        'reference_id' => $referenceId,
+                        'created_by' => $userId,
+                        'created_at' => now(),
+                    ]);
+                }
+
+                // Deduct Tutup Galon
+                if ($tutupSupply) {
+                    $newBalance = $tutupSupply->current_stock - $saleQuantity;
+                    $tutupSupply->update(['current_stock' => $newBalance]);
+
+                    $movements[] = SupplyMovement::create([
+                        'supply_id' => $tutupSupply->id,
+                        'movement_type' => 'SALE_OUT',
+                        'quantity' => -$saleQuantity,
+                        'balance_after' => $newBalance,
+                        'reference_type' => $referenceType,
+                        'reference_id' => $referenceId,
+                        'created_by' => $userId,
+                        'created_at' => now(),
+                    ]);
+                }
             }
 
             return $movements;

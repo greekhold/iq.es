@@ -16,11 +16,13 @@ class Product extends Model
         'name',
         'sku',
         'weight_kg',
+        'requires_stock',
         'status',
     ];
 
     protected $casts = [
         'weight_kg' => 'decimal:2',
+        'requires_stock' => 'boolean',
     ];
 
     public function prices(): HasMany
@@ -38,6 +40,11 @@ class Product extends Model
         return $this->hasMany(ProductionRecord::class);
     }
 
+    public function linkedSupplies(): HasMany
+    {
+        return $this->hasMany(Supply::class, 'linked_product_id');
+    }
+
     public function getCurrentStock(): int
     {
         $lastMovement = $this->inventoryMovements()
@@ -50,5 +57,15 @@ class Product extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
+    }
+
+    public function scopeRequiresStock($query)
+    {
+        return $query->where('requires_stock', true);
+    }
+
+    public function scopeNoStockRequired($query)
+    {
+        return $query->where('requires_stock', false);
     }
 }
