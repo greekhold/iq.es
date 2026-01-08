@@ -26,14 +26,17 @@ export default function Supplies() {
     }, []);
 
     const loadData = async () => {
+        setLoading(true);
         try {
             const [suppliesRes, productsRes] = await Promise.all([
                 suppliesApi.getAll(false),
                 productsApi.getAll(true),
             ]);
-            setSupplies(suppliesRes || []);
-            setProducts(productsRes || []);
+            // Handle different response formats
+            setSupplies(suppliesRes?.data || suppliesRes || []);
+            setProducts(productsRes?.data || productsRes || []);
         } catch (error) {
+            console.error('Failed to load data', error);
             toast.error('Gagal memuat data');
         } finally {
             setLoading(false);
