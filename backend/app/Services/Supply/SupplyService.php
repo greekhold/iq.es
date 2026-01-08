@@ -50,7 +50,7 @@ class SupplyService
             foreach ($linkedSupplies as $supply) {
                 $deductQuantity = $supply->deduct_per_sale * $productionQuantity;
 
-                $newBalance = $supply->current_stock - $deductQuantity;
+                $newBalance = max(0, $supply->current_stock - $deductQuantity);
                 $supply->update(['current_stock' => $newBalance]);
 
                 $movements[] = SupplyMovement::create([
@@ -82,7 +82,7 @@ class SupplyService
 
             // Deduct Galon Kosong
             if ($galonSupply) {
-                $newBalance = $galonSupply->current_stock - $quantity;
+                $newBalance = max(0, $galonSupply->current_stock - $quantity);
                 $galonSupply->update(['current_stock' => $newBalance]);
 
                 $movements[] = SupplyMovement::create([
@@ -99,7 +99,7 @@ class SupplyService
 
             // Deduct Tutup Galon
             if ($tutupSupply) {
-                $newBalance = $tutupSupply->current_stock - $quantity;
+                $newBalance = max(0, $tutupSupply->current_stock - $quantity);
                 $tutupSupply->update(['current_stock' => $newBalance]);
 
                 $movements[] = SupplyMovement::create([
@@ -125,7 +125,7 @@ class SupplyService
     {
         return DB::transaction(function () use ($supplyId, $quantity, $userId) {
             $supply = Supply::lockForUpdate()->findOrFail($supplyId);
-            $newBalance = $supply->current_stock + $quantity;
+            $newBalance = max(0, $supply->current_stock + $quantity);
 
             $supply->update(['current_stock' => $newBalance]);
 
