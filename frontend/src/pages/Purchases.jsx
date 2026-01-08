@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiShoppingBag, FiEye, FiCalendar } from 'react-icons/fi';
+import { FiPlus, FiShoppingBag, FiEye, FiCalendar, FiTrash2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { purchasesApi, suppliesApi } from '../api';
 
@@ -102,6 +102,17 @@ export default function Purchases() {
         return new Date(dateStr).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
+    const handleDelete = async (purchase) => {
+        if (!confirm(`Hapus pembelian "${purchase.invoice_number}"?`)) return;
+        try {
+            await purchasesApi.delete(purchase.id);
+            toast.success('Pembelian berhasil dihapus');
+            loadData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Gagal menghapus pembelian');
+        }
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Header */}
@@ -153,6 +164,7 @@ export default function Purchases() {
                                     <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#4B5563', textTransform: 'uppercase' }}>Supplier</th>
                                     <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#4B5563', textTransform: 'uppercase' }}>Items</th>
                                     <th style={{ padding: '12px 24px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: '#4B5563', textTransform: 'uppercase' }}>Total</th>
+                                    <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#4B5563', textTransform: 'uppercase' }}>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -163,6 +175,11 @@ export default function Purchases() {
                                         <td style={{ padding: '16px 24px', color: '#4B5563' }}>{purchase.supplier_name || '-'}</td>
                                         <td style={{ padding: '16px 24px', color: '#4B5563' }}>{purchase.items?.length || 0} item</td>
                                         <td style={{ padding: '16px 24px', textAlign: 'right', fontWeight: '600', color: '#1F2937' }}>{formatCurrency(purchase.total_amount)}</td>
+                                        <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                                            <button onClick={() => handleDelete(purchase)} style={{ color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer' }} title="Hapus">
+                                                <FiTrash2 className="w-4 h-4 hover:text-red-500" />
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiDollarSign } from 'react-icons/fi';
+import { FiPlus, FiDollarSign, FiTrash2, FiEdit2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { pricesApi, productsApi } from '../api';
 import client from '../api/client';
@@ -10,6 +10,7 @@ export default function Prices() {
     const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [editingPrice, setEditingPrice] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         product_id: '',
@@ -63,6 +64,17 @@ export default function Prices() {
         }
     };
 
+    const deletePrice = async (price) => {
+        if (!confirm(`Hapus harga ${formatCurrency(price.price)}?`)) return;
+        try {
+            await pricesApi.delete(price.id);
+            toast.success('Harga berhasil dihapus');
+            loadData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Gagal menghapus harga');
+        }
+    };
+
     const handleRoleToggle = (roleId) => {
         setFormData(prev => ({
             ...prev,
@@ -85,26 +97,48 @@ export default function Prices() {
 
         setSubmitting(true);
         try {
-            await pricesApi.create({
-                product_id: formData.product_id,
-                price: parseFloat(formData.price),
-                sales_channel: formData.sales_channel,
-                role_ids: formData.role_ids,
-            });
-            toast.success('Harga berhasil ditambahkan');
+            if (editingPrice) {
+                await pricesApi.update(editingPrice.id, {
+                    price: parseFloat(formData.price),
+                    sales_channel: formData.sales_channel,
+                    role_ids: formData.role_ids,
+                });
+                toast.success('Harga berhasil diupdate');
+            } else {
+                await pricesApi.create({
+                    product_id: formData.product_id,
+                    price: parseFloat(formData.price),
+                    sales_channel: formData.sales_channel,
+                    role_ids: formData.role_ids,
+                });
+                toast.success('Harga berhasil ditambahkan');
+            }
             setShowModal(false);
+            setEditingPrice(null);
             setFormData({ product_id: '', price: '', sales_channel: 'ALL', role_ids: [] });
             loadData();
         } catch (error) {
-            console.error('Failed to create price:', error);
-            toast.error(error.response?.data?.message || 'Gagal menambah harga');
+            console.error('Failed to save price:', error);
+            toast.error(error.response?.data?.message || 'Gagal menyimpan harga');
         } finally {
             setSubmitting(false);
         }
     };
 
     const openAddModal = () => {
+        setEditingPrice(null);
         setFormData({ product_id: '', price: '', sales_channel: 'ALL', role_ids: [] });
+        setShowModal(true);
+    };
+
+    const openEditModal = (price) => {
+        setEditingPrice(price);
+        setFormData({
+            product_id: price.product_id,
+            price: price.price.toString(),
+            sales_channel: price.sales_channel,
+            role_ids: price.role_access?.map(ra => ra.role_id) || [],
+        });
         setShowModal(true);
     };
 
@@ -162,15 +196,31 @@ export default function Prices() {
                                                         Channel: {price.sales_channel === 'ALL' ? 'Semua' : price.sales_channel === 'FACTORY' ? 'Pabrik' : 'Lapangan'}
                                                     </p>
                                                 </div>
-                                                <button
-                                                    onClick={() => togglePriceStatus(price)}
-                                                    className={`text-xs px-2 py-1 rounded-full ${price.is_active
-                                                        ? 'bg-green-200 text-green-700'
-                                                        : 'bg-gray-200 text-gray-600'
-                                                        }`}
-                                                >
-                                                    {price.is_active ? 'Aktif' : 'Nonaktif'}
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => togglePriceStatus(price)}
+                                                        className={`text-xs px-2 py-1 rounded-full ${price.is_active
+                                                            ? 'bg-green-200 text-green-700'
+                                                            : 'bg-gray-200 text-gray-600'
+                                                            }`}
+                                                    >
+                                                        {price.is_active ? 'Aktif' : 'Nonaktif'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openEditModal(price)}
+                                                        className="text-gray-400 hover:text-cyan-500 transition-colors"
+                                                        title="Edit harga"
+                                                    >
+                                                        <FiEdit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deletePrice(price)}
+                                                        className="text-gray-400 hover:text-red-500 transition-colors"
+                                                        title="Hapus harga"
+                                                    >
+                                                        <FiTrash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </div>
                                             {price.role_access?.length > 0 && (
                                                 <div className="mt-3 pt-3 border-t border-gray-200">
@@ -193,11 +243,13 @@ export default function Prices() {
                 </div>
             )}
 
-            {/* Add Price Modal */}
+            {/* Add/Edit Price Modal */}
             {showModal && (
                 <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
                     <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '480px' }} className="animate-fadeIn">
-                        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>Tambah Harga Baru</h2>
+                        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>
+                            {editingPrice ? 'Edit Harga' : 'Tambah Harga Baru'}
+                        </h2>
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div>
                                 <label className="label">Produk *</label>
@@ -206,6 +258,7 @@ export default function Prices() {
                                     onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
                                     className="input"
                                     required
+                                    disabled={!!editingPrice}
                                 >
                                     <option value="">Pilih Produk</option>
                                     {products.map(p => (

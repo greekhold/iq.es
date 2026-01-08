@@ -86,4 +86,19 @@ class ProductionController extends Controller
             'data' => $summary,
         ]);
     }
+
+    /**
+     * Delete production record
+     */
+    public function destroy(string $id): JsonResponse
+    {
+        $record = ProductionRecord::findOrFail($id);
+
+        $record->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Produksi berhasil dihapus',
+        ]);
+    }
 }

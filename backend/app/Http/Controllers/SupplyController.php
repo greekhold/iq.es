@@ -83,4 +83,22 @@ class SupplyController extends Controller
 
         return response()->json($supplies);
     }
+
+    public function destroy(Supply $supply)
+    {
+        // Check if supply has movements
+        if ($supply->movements()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bahan tidak dapat dihapus karena memiliki riwayat pergerakan stok',
+            ], 422);
+        }
+
+        $supply->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Bahan berhasil dihapus',
+        ]);
+    }
 }

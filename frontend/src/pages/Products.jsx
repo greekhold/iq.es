@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiBox, FiRefreshCw, FiZap } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiBox, FiRefreshCw, FiZap, FiTrash2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { productsApi, inventoryApi } from '../api';
 import useAuthStore from '../hooks/useAuth';
@@ -107,6 +107,17 @@ export default function Products() {
         setShowAdjustModal(true);
     };
 
+    const handleDelete = async (product) => {
+        if (!confirm(`Hapus produk "${product.name}"?`)) return;
+        try {
+            await productsApi.delete(product.id);
+            toast.success('Produk berhasil dihapus');
+            loadData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Gagal menghapus produk');
+        }
+    };
+
     const getProductStock = (productId) => {
         return stocks[productId] || 0;
     };
@@ -159,14 +170,24 @@ export default function Products() {
                                     </div>
                                 </div>
                                 {isAdmin() && (
-                                    <button
-                                        onClick={() => openEditModal(product)}
-                                        style={{ padding: '8px', color: '#9CA3AF', background: 'none', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-                                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#F3F4F6'; e.currentTarget.style.color = '#00ACC1'; }}
-                                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#9CA3AF'; }}
-                                    >
-                                        <FiEdit2 style={{ width: '16px', height: '16px' }} />
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                        <button
+                                            onClick={() => openEditModal(product)}
+                                            style={{ padding: '8px', color: '#9CA3AF', background: 'none', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                                            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#F3F4F6'; e.currentTarget.style.color = '#00ACC1'; }}
+                                            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#9CA3AF'; }}
+                                        >
+                                            <FiEdit2 style={{ width: '16px', height: '16px' }} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(product)}
+                                            style={{ padding: '8px', color: '#9CA3AF', background: 'none', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                                            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#FEE2E2'; e.currentTarget.style.color = '#DC2626'; }}
+                                            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#9CA3AF'; }}
+                                        >
+                                            <FiTrash2 style={{ width: '16px', height: '16px' }} />
+                                        </button>
+                                    </div>
                                 )}
                             </div>
 

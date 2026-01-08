@@ -134,4 +134,22 @@ class PriceController extends Controller
             'data' => $price->fresh(['product', 'roleAccess.role']),
         ]);
     }
+
+    /**
+     * Delete price
+     */
+    public function destroy(string $id): JsonResponse
+    {
+        $price = Price::findOrFail($id);
+
+        // Delete role access first
+        RolePriceAccess::where('price_id', $price->id)->delete();
+
+        $price->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Harga berhasil dihapus',
+        ]);
+    }
 }

@@ -47,6 +47,7 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::middleware(['role:ADMIN'])->group(function () {
         Route::post('products', [ProductController::class, 'store']);
         Route::put('products/{id}', [ProductController::class, 'update']);
+        Route::delete('products/{id}', [ProductController::class, 'destroy']);
     });
 
     // Prices
@@ -55,6 +56,7 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::get('prices', [PriceController::class, 'index']);
         Route::post('prices', [PriceController::class, 'store']);
         Route::put('prices/{id}', [PriceController::class, 'update']);
+        Route::delete('prices/{id}', [PriceController::class, 'destroy']);
     });
 
     // Customers
@@ -62,6 +64,7 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::post('customers', [CustomerController::class, 'store']);
     Route::middleware(['role:ADMIN'])->group(function () {
         Route::put('customers/{id}', [CustomerController::class, 'update']);
+        Route::delete('customers/{id}', [CustomerController::class, 'destroy']);
         Route::get('customers/{id}/history', [CustomerController::class, 'history']);
     });
 
@@ -70,6 +73,9 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::middleware(['role:ADMIN,KASIR_PABRIK'])->group(function () {
         Route::post('production', [ProductionController::class, 'store']);
         Route::get('production/summary', [ProductionController::class, 'summary']);
+    });
+    Route::middleware(['role:ADMIN'])->group(function () {
+        Route::delete('production/{id}', [ProductionController::class, 'destroy']);
     });
 
     // Inventory
@@ -86,6 +92,8 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::post('sales', [SalesController::class, 'store']);
     });
     Route::middleware(['role:ADMIN'])->group(function () {
+        Route::put('sales/{id}', [SalesController::class, 'update']);
+        Route::delete('sales/{id}', [SalesController::class, 'destroy']);
         Route::post('sales/{id}/cancel', [SalesController::class, 'cancel']);
         Route::post('sales/{id}/pay', [SalesController::class, 'markAsPaid']);
     });
@@ -96,6 +104,7 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::middleware(['role:ADMIN'])->group(function () {
         Route::post('supplies', [SupplyController::class, 'store']);
         Route::put('supplies/{supply}', [SupplyController::class, 'update']);
+        Route::delete('supplies/{supply}', [SupplyController::class, 'destroy']);
         Route::post('supplies/{supply}/adjust', [SupplyController::class, 'adjust']);
     });
 
@@ -105,6 +114,7 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::get('purchases/{id}', [PurchaseController::class, 'show']);
     Route::middleware(['role:ADMIN'])->group(function () {
         Route::post('purchases', [PurchaseController::class, 'store']);
+        Route::delete('purchases/{id}', [PurchaseController::class, 'destroy']);
     });
 
     // Expenses (Pengeluaran Operasional)
@@ -113,6 +123,8 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::get('expenses/categories', [ExpenseController::class, 'categories']);
     Route::middleware(['role:ADMIN'])->group(function () {
         Route::post('expenses', [ExpenseController::class, 'store']);
+        Route::put('expenses/{id}', [ExpenseController::class, 'update']);
+        Route::delete('expenses/{id}', [ExpenseController::class, 'destroy']);
         Route::post('expenses/categories', [ExpenseController::class, 'storeCategory']);
     });
 

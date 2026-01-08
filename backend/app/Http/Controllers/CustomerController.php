@@ -107,4 +107,30 @@ class CustomerController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Delete customer
+     */
+    public function destroy(string $id): JsonResponse
+    {
+        $customer = Customer::findOrFail($id);
+        $oldData = $customer->toArray();
+
+        // Check if customer has sales
+        if ($customer->sales()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Customer tidak dapat dihapus karena memiliki riwayat transaksi',
+            ], 422);
+        }
+
+        $customer->delete();
+
+        AuditLog::log('DELETE', Customer::class, $id, $oldData, null);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Customer berhasil dihapus',
+        ]);
+    }
 }

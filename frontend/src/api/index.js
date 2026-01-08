@@ -17,6 +17,11 @@ export const productsApi = {
         const response = await client.put(`/products/${id}`, data);
         return response.data;
     },
+
+    delete: async (id) => {
+        const response = await client.delete(`/products/${id}`);
+        return response.data;
+    },
 };
 
 export const pricesApi = {
@@ -43,6 +48,11 @@ export const pricesApi = {
         const response = await client.put(`/prices/${id}`, data);
         return response.data;
     },
+
+    delete: async (id) => {
+        const response = await client.delete(`/prices/${id}`);
+        return response.data;
+    },
 };
 
 export const customersApi = {
@@ -58,6 +68,11 @@ export const customersApi = {
 
     update: async (id, data) => {
         const response = await client.put(`/customers/${id}`, data);
+        return response.data;
+    },
+
+    delete: async (id) => {
+        const response = await client.delete(`/customers/${id}`);
         return response.data;
     },
 
@@ -80,6 +95,16 @@ export const salesApi = {
 
     create: async (data) => {
         const response = await client.post('/sales', data);
+        return response.data;
+    },
+
+    update: async (id, data) => {
+        const response = await client.put(`/sales/${id}`, data);
+        return response.data;
+    },
+
+    delete: async (id) => {
+        const response = await client.delete(`/sales/${id}`);
         return response.data;
     },
 
@@ -119,6 +144,11 @@ export const productionApi = {
 
     create: async (data) => {
         const response = await client.post('/production', data);
+        return response.data;
+    },
+
+    delete: async (id) => {
+        const response = await client.delete(`/production/${id}`);
         return response.data;
     },
 
@@ -176,6 +206,11 @@ export const suppliesApi = {
         return response.data;
     },
 
+    delete: async (id) => {
+        const response = await client.delete(`/supplies/${id}`);
+        return response.data;
+    },
+
     adjust: async (id, quantity) => {
         const response = await client.post(`/supplies/${id}/adjust`, { quantity });
         return response.data;
@@ -199,6 +234,11 @@ export const purchasesApi = {
         return response.data;
     },
 
+    delete: async (id) => {
+        const response = await client.delete(`/purchases/${id}`);
+        return response.data;
+    },
+
     getSummary: async (startDate, endDate) => {
         const response = await client.get('/purchases/summary', {
             params: { start_date: startDate, end_date: endDate },
@@ -216,6 +256,16 @@ export const expensesApi = {
 
     create: async (data) => {
         const response = await client.post('/expenses', data);
+        return response.data;
+    },
+
+    delete: async (id) => {
+        const response = await client.delete(`/expenses/${id}`);
+        return response.data;
+    },
+
+    update: async (id, data) => {
+        const response = await client.put(`/expenses/${id}`, data);
         return response.data;
     },
 

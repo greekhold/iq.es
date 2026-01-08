@@ -86,4 +86,37 @@ class ExpenseController extends Controller
 
         return response()->json($category, 201);
     }
+
+    public function update(Request $request, string $id)
+    {
+        $expense = \App\Models\Expense::findOrFail($id);
+
+        $validated = $request->validate([
+            'category_id' => 'sometimes|uuid|exists:expense_categories,id',
+            'description' => 'sometimes|string|max:255',
+            'amount' => 'sometimes|numeric|min:0',
+            'expense_date' => 'sometimes|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        $expense->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pengeluaran berhasil diupdate',
+            'data' => $expense->load('category'),
+        ]);
+    }
+
+    public function destroy(string $id)
+    {
+        $expense = \App\Models\Expense::findOrFail($id);
+
+        $expense->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pengeluaran berhasil dihapus',
+        ]);
+    }
 }

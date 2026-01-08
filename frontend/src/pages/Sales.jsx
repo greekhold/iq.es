@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FiPlus, FiEye, FiFilter, FiX, FiPackage, FiCheck } from 'react-icons/fi';
+import { FiPlus, FiEye, FiFilter, FiX, FiPackage, FiCheck, FiTrash2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { salesApi } from '../api';
 import useAuthStore from '../hooks/useAuth';
@@ -59,6 +59,17 @@ export default function Sales() {
             loadSales();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Gagal mencatat pembayaran');
+        }
+    };
+
+    const handleDelete = async (sale) => {
+        if (!confirm(`Hapus penjualan "${sale.invoice_number}"?`)) return;
+        try {
+            await salesApi.delete(sale.id);
+            toast.success('Penjualan berhasil dihapus');
+            loadSales();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Gagal menghapus penjualan');
         }
     };
 
@@ -229,13 +240,23 @@ export default function Sales() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <button
-                                                onClick={() => openDetail(sale)}
-                                                className="inline-flex items-center gap-1 text-cyan-600 hover:text-cyan-700"
-                                            >
-                                                <FiEye className="w-4 h-4" />
-                                                <span>Detail</span>
-                                            </button>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => openDetail(sale)}
+                                                    className="inline-flex items-center gap-1 text-cyan-600 hover:text-cyan-700"
+                                                >
+                                                    <FiEye className="w-4 h-4" />
+                                                    <span>Detail</span>
+                                                </button>
+                                                {isAdmin() && (
+                                                    <button
+                                                        onClick={() => handleDelete(sale)}
+                                                        className="inline-flex items-center gap-1 text-red-500 hover:text-red-700"
+                                                    >
+                                                        <FiTrash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiClock, FiPackage } from 'react-icons/fi';
+import { FiPlus, FiClock, FiPackage, FiTrash2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { productionApi, productsApi } from '../api';
+import useAuthStore from '../hooks/useAuth';
 
 export default function Production() {
+    const { isAdmin } = useAuthStore();
     const [records, setRecords] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -63,6 +65,17 @@ export default function Production() {
         });
     };
 
+    const handleDelete = async (record) => {
+        if (!confirm(`Hapus produksi ${record.product?.name}?`)) return;
+        try {
+            await productionApi.delete(record.id);
+            toast.success('Produksi berhasil dihapus');
+            loadData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Gagal menghapus produksi');
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -99,6 +112,9 @@ export default function Production() {
                                     <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Mesin ON</th>
                                     <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Mesin OFF</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Operator</th>
+                                    {isAdmin() && (
+                                        <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Aksi</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -124,6 +140,13 @@ export default function Production() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-gray-600">{record.created_by?.name || '-'}</td>
+                                        {isAdmin() && (
+                                            <td className="px-6 py-4 text-center">
+                                                <button onClick={() => handleDelete(record)} className="text-gray-400 hover:text-red-500" title="Hapus">
+                                                    <FiTrash2 className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>

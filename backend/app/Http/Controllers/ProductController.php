@@ -87,4 +87,22 @@ class ProductController extends Controller
             'data' => $product,
         ]);
     }
+
+    /**
+     * Delete product
+     */
+    public function destroy(string $id): JsonResponse
+    {
+        $product = Product::findOrFail($id);
+        $oldData = $product->toArray();
+
+        $product->delete();
+
+        AuditLog::log('DELETE', Product::class, $id, $oldData, null);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Produk berhasil dihapus',
+        ]);
+    }
 }

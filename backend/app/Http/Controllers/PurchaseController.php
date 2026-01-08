@@ -70,4 +70,18 @@ class PurchaseController extends Controller
             'total_purchases' => $total,
         ]);
     }
+
+    public function destroy(string $id)
+    {
+        $purchase = \App\Models\Purchase::findOrFail($id);
+
+        // Delete items first then purchase
+        $purchase->items()->delete();
+        $purchase->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pembelian berhasil dihapus',
+        ]);
+    }
 }

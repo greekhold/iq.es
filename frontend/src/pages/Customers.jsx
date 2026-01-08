@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiUsers } from 'react-icons/fi';
+import { FiPlus, FiUsers, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { customersApi } from '../api';
+import useAuthStore from '../hooks/useAuth';
 
 export default function Customers() {
+    const { isAdmin } = useAuthStore();
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [showModal, setShowModal] = useState(false);
+    const [editingCustomer, setEditingCustomer] = useState(null);
     const [formData, setFormData] = useState({ name: '', phone: '', type: 'RETAIL', address: '' });
 
     useEffect(() => {
@@ -30,14 +33,48 @@ export default function Customers() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await customersApi.create(formData);
-            toast.success('Customer berhasil ditambahkan');
+            if (editingCustomer) {
+                await customersApi.update(editingCustomer.id, formData);
+                toast.success('Customer berhasil diupdate');
+            } else {
+                await customersApi.create(formData);
+                toast.success('Customer berhasil ditambahkan');
+            }
             setShowModal(false);
+            setEditingCustomer(null);
             setFormData({ name: '', phone: '', type: 'RETAIL', address: '' });
             loadCustomers();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Gagal menambahkan customer');
+            toast.error(error.response?.data?.message || 'Gagal menyimpan customer');
         }
+    };
+
+    const handleEdit = (customer) => {
+        setEditingCustomer(customer);
+        setFormData({
+            name: customer.name,
+            phone: customer.phone || '',
+            type: customer.type,
+            address: customer.address || '',
+        });
+        setShowModal(true);
+    };
+
+    const handleDelete = async (customer) => {
+        if (!confirm(`Hapus customer "${customer.name}"?`)) return;
+        try {
+            await customersApi.delete(customer.id);
+            toast.success('Customer berhasil dihapus');
+            loadCustomers();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Gagal menghapus customer');
+        }
+    };
+
+    const openAddModal = () => {
+        setEditingCustomer(null);
+        setFormData({ name: '', phone: '', type: 'RETAIL', address: '' });
+        setShowModal(true);
     };
 
     const handleSearch = (e) => {
@@ -59,7 +96,7 @@ export default function Customers() {
                     <h1 className="text-2xl font-bold text-gray-800">Manajemen Customer</h1>
                     <p className="text-gray-500 mt-1">Daftar customer dan agen</p>
                 </div>
-                <button onClick={() => setShowModal(true)} className="btn btn-primary inline-flex items-center gap-2">
+                <button onClick={openAddModal} className="btn btn-primary inline-flex items-center gap-2">
                     <FiPlus className="w-5 h-5" />
                     <span>Tambah Customer</span>
                 </button>
@@ -101,6 +138,9 @@ export default function Customers() {
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Telepon</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Tipe</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Alamat</th>
+                                    {isAdmin() && (
+                                        <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Aksi</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -114,6 +154,26 @@ export default function Customers() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-gray-600">{customer.address || '-'}</td>
+                                        {isAdmin() && (
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <button
+                                                        onClick={() => handleEdit(customer)}
+                                                        className="text-cyan-600 hover:text-cyan-700"
+                                                        title="Edit"
+                                                    >
+                                                        <FiEdit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(customer)}
+                                                        className="text-red-500 hover:text-red-700"
+                                                        title="Hapus"
+                                                    >
+                                                        <FiTrash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>
@@ -126,7 +186,9 @@ export default function Customers() {
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl p-6 w-full max-w-md animate-fadeIn">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">Tambah Customer Baru</h2>
+                        <h2 className="text-xl font-bold text-gray-800 mb-4">
+                            {editingCustomer ? 'Edit Customer' : 'Tambah Customer Baru'}
+                        </h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
                                 <label className="label">Nama</label>

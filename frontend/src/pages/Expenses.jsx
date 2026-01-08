@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiDollarSign, FiCalendar, FiTag } from 'react-icons/fi';
+import { FiPlus, FiDollarSign, FiCalendar, FiTag, FiTrash2, FiEdit2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { expensesApi } from '../api';
 
@@ -8,6 +8,7 @@ export default function Expenses() {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [editingExpense, setEditingExpense] = useState(null);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [filters, setFilters] = useState({
         start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -50,9 +51,15 @@ export default function Expenses() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await expensesApi.create(formData);
-            toast.success('Pengeluaran berhasil dicatat');
+            if (editingExpense) {
+                await expensesApi.update(editingExpense.id, formData);
+                toast.success('Pengeluaran berhasil diupdate');
+            } else {
+                await expensesApi.create(formData);
+                toast.success('Pengeluaran berhasil dicatat');
+            }
             setShowModal(false);
+            setEditingExpense(null);
             setFormData({
                 category_id: '',
                 description: '',
@@ -87,6 +94,41 @@ export default function Expenses() {
         return new Date(dateStr).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
+    const handleDelete = async (expense) => {
+        if (!confirm(`Hapus pengeluaran "${expense.description}"?`)) return;
+        try {
+            await expensesApi.delete(expense.id);
+            toast.success('Pengeluaran berhasil dihapus');
+            loadData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Gagal menghapus pengeluaran');
+        }
+    };
+
+    const openAddModal = () => {
+        setEditingExpense(null);
+        setFormData({
+            category_id: '',
+            description: '',
+            amount: '',
+            expense_date: new Date().toISOString().split('T')[0],
+            notes: '',
+        });
+        setShowModal(true);
+    };
+
+    const openEditModal = (expense) => {
+        setEditingExpense(expense);
+        setFormData({
+            category_id: expense.category_id,
+            description: expense.description,
+            amount: expense.amount.toString(),
+            expense_date: expense.expense_date?.split('T')[0] || expense.expense_date,
+            notes: expense.notes || '',
+        });
+        setShowModal(true);
+    };
+
     const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
 
     return (
@@ -101,7 +143,7 @@ export default function Expenses() {
                     <button onClick={() => setShowCategoryModal(true)} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FiTag /> Kategori
                     </button>
-                    <button onClick={() => setShowModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button onClick={openAddModal} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FiPlus /> Catat Pengeluaran
                     </button>
                 </div>
@@ -159,6 +201,7 @@ export default function Expenses() {
                                     <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#4B5563', textTransform: 'uppercase' }}>Kategori</th>
                                     <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#4B5563', textTransform: 'uppercase' }}>Deskripsi</th>
                                     <th style={{ padding: '12px 24px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: '#4B5563', textTransform: 'uppercase' }}>Jumlah</th>
+                                    <th style={{ padding: '12px 24px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#4B5563', textTransform: 'uppercase' }}>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -172,6 +215,16 @@ export default function Expenses() {
                                         </td>
                                         <td style={{ padding: '16px 24px', color: '#1F2937' }}>{expense.description}</td>
                                         <td style={{ padding: '16px 24px', textAlign: 'right', fontWeight: '600', color: '#DC2626' }}>{formatCurrency(expense.amount)}</td>
+                                        <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                                <button onClick={() => openEditModal(expense)} style={{ color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">
+                                                    <FiEdit2 className="w-4 h-4 hover:text-cyan-500" />
+                                                </button>
+                                                <button onClick={() => handleDelete(expense)} style={{ color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer' }} title="Hapus">
+                                                    <FiTrash2 className="w-4 h-4 hover:text-red-500" />
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -180,11 +233,13 @@ export default function Expenses() {
                 )}
             </div>
 
-            {/* Create Expense Modal */}
+            {/* Create/Edit Expense Modal */}
             {showModal && (
                 <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
                     <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '480px' }} className="animate-fadeIn">
-                        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>Catat Pengeluaran</h2>
+                        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1F2937', marginBottom: '16px' }}>
+                            {editingExpense ? 'Edit Pengeluaran' : 'Catat Pengeluaran'}
+                        </h2>
                         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div>
                                 <label className="label">Kategori</label>

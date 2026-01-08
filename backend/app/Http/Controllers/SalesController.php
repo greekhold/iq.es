@@ -174,4 +174,42 @@ class SalesController extends Controller
             ], 422);
         }
     }
+
+    /**
+     * Update a sale
+     */
+    public function update(Request $request, string $id): JsonResponse
+    {
+        $sale = Sale::findOrFail($id);
+
+        $request->validate([
+            'notes' => ['nullable', 'string'],
+            'due_date' => ['nullable', 'date'],
+        ]);
+
+        $sale->update($request->only(['notes', 'due_date']));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Penjualan berhasil diupdate',
+            'data' => $sale->fresh(['customer', 'items.product']),
+        ]);
+    }
+
+    /**
+     * Delete a sale
+     */
+    public function destroy(string $id): JsonResponse
+    {
+        $sale = Sale::findOrFail($id);
+
+        // Delete items
+        $sale->items()->delete();
+        $sale->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Penjualan berhasil dihapus',
+        ]);
+    }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiPackage, FiEdit2, FiAlertTriangle, FiLink } from 'react-icons/fi';
+import { FiPlus, FiPackage, FiEdit2, FiAlertTriangle, FiLink, FiTrash2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { suppliesApi, productsApi } from '../api';
 
@@ -106,6 +106,17 @@ export default function Supplies() {
         setShowAdjustModal(true);
     };
 
+    const handleDelete = async (supply) => {
+        if (!confirm(`Hapus bahan "${supply.name}"?`)) return;
+        try {
+            await suppliesApi.delete(supply.id);
+            toast.success('Bahan berhasil dihapus');
+            loadData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Gagal menghapus bahan');
+        }
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Header */}
@@ -171,6 +182,9 @@ export default function Supplies() {
                                     </button>
                                     <button onClick={() => openEditModal(supply)} className="btn btn-secondary" style={{ padding: '8px' }}>
                                         <FiEdit2 />
+                                    </button>
+                                    <button onClick={() => handleDelete(supply)} className="btn btn-secondary" style={{ padding: '8px', color: '#DC2626' }} title="Hapus">
+                                        <FiTrash2 />
                                     </button>
                                 </div>
                             </div>
