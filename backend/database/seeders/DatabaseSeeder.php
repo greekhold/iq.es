@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             PriceSeeder::class,
             SupplySeeder::class,
             ExpenseCategorySeeder::class,
+            DummyDataSeeder::class,
         ]);
     }
 }
