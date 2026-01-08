@@ -28,7 +28,7 @@ class PriceController extends Controller
             $query->where('product_id', $request->product_id);
         }
 
-        if ($request->has('active_only') && $request->active_only) {
+        if ($request->boolean('active_only')) {
             $query->active();
         }
 

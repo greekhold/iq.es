@@ -25,7 +25,7 @@ export const productsApi = {
 };
 
 export const pricesApi = {
-    getAll: async (productId = null, activeOnly = true) => {
+    getAll: async (productId = null, activeOnly = false) => {
         const response = await client.get('/prices', {
             params: { product_id: productId, active_only: activeOnly },
         });
