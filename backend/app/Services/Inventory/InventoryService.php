@@ -94,11 +94,14 @@ class InventoryService
      */
     private function calculateNewBalance(int $currentStock, MovementType $type, int $quantity): int
     {
-        return match ($type) {
+        $newBalance = match ($type) {
             MovementType::PRODUCTION_IN, MovementType::RETURN => $currentStock + $quantity,
             MovementType::SALE_FACTORY, MovementType::SALE_FIELD => $currentStock - $quantity,
             MovementType::ADJUSTMENT => $currentStock + $quantity, // quantity can be negative for reduction
         };
+
+        // Ensure stock never goes below 0
+        return max(0, $newBalance);
     }
 
     /**
@@ -106,8 +109,8 @@ class InventoryService
      */
     private function allowsNegativeStock(MovementType $type): bool
     {
-        // Only manual adjustments can potentially create negative stock (for corrections)
-        return $type === MovementType::ADJUSTMENT;
+        // No movement type allows negative stock
+        return false;
     }
 
     /**
