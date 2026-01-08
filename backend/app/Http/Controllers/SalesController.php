@@ -87,7 +87,9 @@ class SalesController extends Controller
                 $request->items,
                 $request->payment_method,
                 $request->customer_id,
-                $request->sold_at
+                $request->sold_at,
+                $request->due_date,
+                $request->boolean('is_new_galon', false)
             );
 
             return response()->json([
@@ -102,6 +104,7 @@ class SalesController extends Controller
             ], 422);
         }
     }
+
 
     /**
      * Get sale detail
@@ -138,6 +141,30 @@ class SalesController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Penjualan berhasil dibatalkan',
+                'data' => $sale,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Mark a sale as paid
+     */
+    public function markAsPaid(string $id): JsonResponse
+    {
+        $sale = Sale::findOrFail($id);
+        $user = auth()->user();
+
+        try {
+            $sale = $this->salesService->markAsPaid($sale, $user);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pembayaran berhasil dicatat',
                 'data' => $sale,
             ]);
         } catch (\Exception $e) {

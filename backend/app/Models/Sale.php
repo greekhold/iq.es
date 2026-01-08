@@ -20,6 +20,8 @@ class Sale extends Model
         'customer_id',
         'sales_channel',
         'payment_method',
+        'due_date',
+        'payment_status',
         'total_amount',
         'status',
         'sync_status',
@@ -33,6 +35,7 @@ class Sale extends Model
         'sync_status' => SyncStatus::class,
         'total_amount' => 'decimal:2',
         'sold_at' => 'datetime',
+        'due_date' => 'date',
     ];
 
     public function customer(): BelongsTo
@@ -74,6 +77,26 @@ class Sale extends Model
     public function scopeNeedsSync($query)
     {
         return $query->where('sync_status', SyncStatus::PENDING);
+    }
+
+    public function scopeUnpaid($query)
+    {
+        return $query->whereIn('payment_status', ['unpaid', 'overdue']);
+    }
+
+    public function scopeOverdue($query)
+    {
+        return $query->where('payment_status', 'overdue');
+    }
+
+    public function isUnpaid(): bool
+    {
+        return in_array($this->payment_status, ['unpaid', 'overdue']);
+    }
+
+    public function isOverdue(): bool
+    {
+        return $this->payment_status === 'overdue';
     }
 
     public static function generateInvoiceNumber(SalesChannel $channel): string

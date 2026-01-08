@@ -34,6 +34,14 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::get('me', [AuthController::class, 'me']);
     });
 
+    // Roles (for forms)
+    Route::get('roles', function () {
+        return response()->json([
+            'success' => true,
+            'data' => \App\Models\Role::where('name', '!=', 'VIEWER')->get(),
+        ]);
+    });
+
     // Products (read for all, write for admin)
     Route::get('products', [ProductController::class, 'index']);
     Route::middleware(['role:ADMIN'])->group(function () {
@@ -79,6 +87,7 @@ Route::middleware(['jwt.auth'])->group(function () {
     });
     Route::middleware(['role:ADMIN'])->group(function () {
         Route::post('sales/{id}/cancel', [SalesController::class, 'cancel']);
+        Route::post('sales/{id}/pay', [SalesController::class, 'markAsPaid']);
     });
 
     // Supplies (Bahan Baku)

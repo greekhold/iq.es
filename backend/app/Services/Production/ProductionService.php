@@ -8,12 +8,14 @@ use App\Models\Product;
 use App\Models\ProductionRecord;
 use App\Models\User;
 use App\Services\Inventory\InventoryService;
+use App\Services\Supply\SupplyService;
 use Illuminate\Support\Facades\DB;
 
 class ProductionService
 {
     public function __construct(
-        private InventoryService $inventoryService
+        private InventoryService $inventoryService,
+        private SupplyService $supplyService
     ) {
     }
 
@@ -41,13 +43,22 @@ class ProductionService
                 'notes' => $notes,
             ]);
 
-            // Record inventory movement
+            // Record inventory movement (add stock)
             $this->inventoryService->recordMovement(
                 $product,
                 MovementType::PRODUCTION_IN,
                 $quantity,
                 $user,
                 $record
+            );
+
+            // Auto-deduct supplies (e.g., Plastik Es) for production
+            $this->supplyService->deductForProduction(
+                $productId,
+                $quantity,
+                ProductionRecord::class,
+                $record->id,
+                $user->id
             );
 
             // Log audit

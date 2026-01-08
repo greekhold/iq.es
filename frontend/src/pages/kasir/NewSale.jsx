@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FiPlus, FiTrash2, FiShoppingCart } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiShoppingCart, FiAlertTriangle } from 'react-icons/fi';
 import { productsApi, pricesApi, customersApi, salesApi } from '../../api';
 import useAuthStore from '../../hooks/useAuth';
 
@@ -20,6 +20,8 @@ export default function NewSale() {
     const [channel] = useState(user?.role?.name === 'SUPPLIER' ? 'FIELD' : 'FACTORY');
     const [customerId, setCustomerId] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('CASH');
+    const [dueDate, setDueDate] = useState('');
+    const [isNewGalon, setIsNewGalon] = useState(false);
     const [items, setItems] = useState([]);
 
     useEffect(() => {
@@ -49,6 +51,16 @@ export default function NewSale() {
             setLoading(false);
         }
     };
+
+    // Check if any item is a galon product
+    const hasGalonProduct = items.some(item => {
+        const product = products.find(p => p.id === item.product_id);
+        return product?.sku?.startsWith('GLN-');
+    });
+
+    // Get selected customer
+    const selectedCustomer = customers.find(c => c.id === customerId);
+    const isCustomerBlacklisted = selectedCustomer?.is_blacklisted;
 
     const addItem = () => {
         if (products.length === 0) return;
@@ -113,12 +125,24 @@ export default function NewSale() {
             return;
         }
 
+        if (paymentMethod === 'OTHER' && !dueDate) {
+            toast.error('Batas waktu pembayaran wajib diisi untuk pembayaran Lainnya');
+            return;
+        }
+
+        if (paymentMethod === 'OTHER' && !customerId) {
+            toast.error('Pilih customer untuk pembayaran Lainnya');
+            return;
+        }
+
         setSubmitting(true);
         try {
             const response = await salesApi.create({
                 sales_channel: channel,
                 payment_method: paymentMethod,
                 customer_id: customerId || null,
+                due_date: paymentMethod === 'OTHER' ? dueDate : null,
+                is_new_galon: hasGalonProduct ? isNewGalon : false,
                 items: items.map((item) => ({
                     product_id: item.product_id,
                     price_id: item.price_id,
@@ -162,19 +186,29 @@ export default function NewSale() {
                     {/* Customer & Payment */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="label">Customer (Opsional)</label>
+                            <label className="label">Customer</label>
                             <select
                                 value={customerId}
                                 onChange={(e) => setCustomerId(e.target.value)}
-                                className="input"
+                                className={`input ${isCustomerBlacklisted ? 'border-red-500' : ''}`}
                             >
                                 <option value="">-- Pilih Customer --</option>
                                 {customers.map((customer) => (
-                                    <option key={customer.id} value={customer.id}>
-                                        {customer.name} ({customer.type})
+                                    <option
+                                        key={customer.id}
+                                        value={customer.id}
+                                        disabled={customer.is_blacklisted}
+                                    >
+                                        {customer.name} ({customer.type}) {customer.is_blacklisted ? '⚠️ Blacklist' : ''}
                                     </option>
                                 ))}
                             </select>
+                            {isCustomerBlacklisted && (
+                                <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                                    <FiAlertTriangle className="w-4 h-4" />
+                                    Customer ini memiliki hutang yang belum dibayar
+                                </p>
+                            )}
                         </div>
                         <div>
                             <label className="label">Metode Pembayaran</label>
@@ -185,9 +219,48 @@ export default function NewSale() {
                             >
                                 <option value="CASH">Tunai</option>
                                 <option value="TRANSFER">Transfer</option>
+                                <option value="OTHER">Lainnya (Hutang)</option>
                             </select>
                         </div>
                     </div>
+
+                    {/* Due Date for OTHER payment */}
+                    {paymentMethod === 'OTHER' && (
+                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                            <label className="label text-amber-800">Batas Waktu Pembayaran *</label>
+                            <input
+                                type="date"
+                                value={dueDate}
+                                onChange={(e) => setDueDate(e.target.value)}
+                                min={new Date().toISOString().split('T')[0]}
+                                className="input"
+                                required
+                            />
+                            <p className="text-sm text-amber-700 mt-2">
+                                ⚠️ Jika pembayaran melebihi batas waktu, customer akan di-blacklist dan tidak bisa melakukan transaksi baru.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Galon Baru Checkbox - only show if galon products are in cart */}
+                    {hasGalonProduct && (
+                        <div className="p-4 bg-cyan-50 border border-cyan-200 rounded-lg">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={isNewGalon}
+                                    onChange={(e) => setIsNewGalon(e.target.checked)}
+                                    className="w-5 h-5 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                                />
+                                <div>
+                                    <span className="font-medium text-gray-800">Galon Baru (bukan isi ulang)</span>
+                                    <p className="text-sm text-gray-500">
+                                        Centang jika customer membeli galon baru, bukan hanya isi ulang air
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+                    )}
 
                     {/* Items */}
                     <div>
@@ -298,7 +371,7 @@ export default function NewSale() {
                         </button>
                         <button
                             type="submit"
-                            disabled={submitting || items.length === 0}
+                            disabled={submitting || items.length === 0 || isCustomerBlacklisted}
                             className="btn btn-primary flex items-center gap-2"
                         >
                             {submitting ? (

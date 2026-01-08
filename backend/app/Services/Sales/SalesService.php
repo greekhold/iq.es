@@ -3,6 +3,7 @@
 namespace App\Services\Sales;
 
 use App\Enums\MovementType;
+use App\Enums\PaymentMethod;
 use App\Enums\SalesChannel;
 use App\Enums\SyncStatus;
 use App\Exceptions\InsufficientStockException;
@@ -37,14 +38,35 @@ class SalesService
         array $items,
         string $paymentMethod,
         ?string $customerId = null,
-        ?string $soldAt = null
+        ?string $soldAt = null,
+        ?string $dueDate = null,
+        bool $isNewGalon = false
     ): Sale {
-        return DB::transaction(function () use ($user, $channel, $items, $paymentMethod, $customerId, $soldAt) {
+        return DB::transaction(function () use ($user, $channel, $items, $paymentMethod, $customerId, $soldAt, $dueDate, $isNewGalon) {
+            // Validate customer blacklist
+            if ($customerId) {
+                $customer = Customer::find($customerId);
+                if ($customer && $customer->is_blacklisted) {
+                    throw new \InvalidArgumentException(
+                        "Customer {$customer->name} tidak dapat melakukan transaksi karena memiliki hutang yang belum dibayar."
+                    );
+                }
+            }
+
             // Validate all items first
             $validatedItems = $this->validateItems($user, $channel, $items);
 
             // Calculate total
             $totalAmount = collect($validatedItems)->sum('subtotal');
+
+            // Determine payment status for OTHER payment method
+            $paymentStatus = 'paid';
+            if ($paymentMethod === 'OTHER') {
+                $paymentStatus = 'unpaid';
+                if (!$dueDate) {
+                    throw new \InvalidArgumentException('Batas waktu pembayaran wajib diisi untuk metode pembayaran Lainnya');
+                }
+            }
 
             // Create sale record
             $sale = Sale::create([
@@ -52,6 +74,8 @@ class SalesService
                 'customer_id' => $customerId,
                 'sales_channel' => $channel,
                 'payment_method' => $paymentMethod,
+                'due_date' => $dueDate,
+                'payment_status' => $paymentStatus,
                 'total_amount' => $totalAmount,
                 'status' => 'completed',
                 'sync_status' => $channel === SalesChannel::FIELD ? SyncStatus::PENDING : SyncStatus::SYNCED,
@@ -87,14 +111,17 @@ class SalesService
                     );
                 }
 
-                // AUTO-DEDUCT SUPPLIES linked to this product
-                $this->supplyService->deductForSale(
-                    $product->id,
-                    $item['quantity'],
-                    Sale::class,
-                    $sale->id,
-                    $user->id
-                );
+                // For GALON products with NEW galon (not refill), deduct galon kosong & tutup
+                if ($isNewGalon && str_starts_with($product->sku, 'GLN-')) {
+                    $this->supplyService->deductForNewGalon(
+                        $item['quantity'],
+                        Sale::class,
+                        $sale->id,
+                        $user->id
+                    );
+                }
+
+                // NOTE: Plastik deduction is now done in ProductionService, NOT here
             }
 
             // Log audit
@@ -152,6 +179,32 @@ class SalesService
     }
 
     /**
+     * Mark a sale as paid
+     */
+    public function markAsPaid(Sale $sale, User $user): Sale
+    {
+        if ($sale->payment_status === 'paid') {
+            throw new \InvalidArgumentException('Penjualan sudah lunas');
+        }
+
+        return DB::transaction(function () use ($sale, $user) {
+            $oldData = $sale->toArray();
+
+            $sale->update(['payment_status' => 'paid']);
+
+            // Check if customer still has unpaid sales
+            if ($sale->customer && !$sale->customer->hasOverduePayments()) {
+                // If all payments are cleared, remove blacklist
+                $sale->customer->unblacklist();
+            }
+
+            AuditLog::log('UPDATE', Sale::class, $sale->id, $oldData, $sale->fresh()->toArray());
+
+            return $sale->fresh();
+        });
+    }
+
+    /**
      * Cancel a sale (creates reverse inventory movements)
      */
     public function cancelSale(Sale $sale, User $user): Sale
@@ -167,13 +220,15 @@ class SalesService
             foreach ($sale->items as $item) {
                 $product = $item->product;
 
-                $this->inventoryService->recordMovement(
-                    $product,
-                    MovementType::RETURN ,
-                    $item->quantity,
-                    $user,
-                    $sale
-                );
+                if ($product->requires_stock) {
+                    $this->inventoryService->recordMovement(
+                        $product,
+                        MovementType::RETURN ,
+                        $item->quantity,
+                        $user,
+                        $sale
+                    );
+                }
             }
 
             // Update sale status
@@ -210,6 +265,7 @@ class SalesService
             'by_payment' => [
                 'CASH' => $sales->where('payment_method', 'CASH')->sum('total_amount'),
                 'TRANSFER' => $sales->where('payment_method', 'TRANSFER')->sum('total_amount'),
+                'OTHER' => $sales->where('payment_method', 'OTHER')->sum('total_amount'),
             ],
         ];
     }

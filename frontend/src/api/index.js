@@ -87,6 +87,11 @@ export const salesApi = {
         const response = await client.post(`/sales/${id}/cancel`);
         return response.data;
     },
+
+    markAsPaid: async (id) => {
+        const response = await client.post(`/sales/${id}/pay`);
+        return response.data;
+    },
 };
 
 export const inventoryApi = {

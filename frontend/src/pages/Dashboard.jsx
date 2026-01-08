@@ -237,10 +237,12 @@ export default function Dashboard() {
                                         <div className="text-right">
                                             <p className="font-semibold text-gray-800">{formatCurrency(sale.total_amount)}</p>
                                             <span className={`text-xs px-2 py-0.5 rounded-full ${sale.payment_method === 'CASH'
-                                                    ? 'bg-green-100 text-green-700'
+                                                ? 'bg-green-100 text-green-700'
+                                                : sale.payment_method === 'OTHER'
+                                                    ? 'bg-amber-100 text-amber-700'
                                                     : 'bg-blue-100 text-blue-700'
                                                 }`}>
-                                                {sale.payment_method === 'CASH' ? 'Tunai' : 'Transfer'}
+                                                {sale.payment_method === 'CASH' ? 'Tunai' : sale.payment_method === 'OTHER' ? 'Lainnya' : 'Transfer'}
                                             </span>
                                         </div>
                                     </div>
