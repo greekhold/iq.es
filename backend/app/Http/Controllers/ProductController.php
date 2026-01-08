@@ -27,6 +27,7 @@ class ProductController extends Controller
                 'sku' => $product->sku,
                 'weight_kg' => $product->weight_kg,
                 'status' => $product->status,
+                'requires_stock' => $product->requires_stock,
                 'current_stock' => $product->getCurrentStock(),
             ];
         });
@@ -46,9 +47,10 @@ class ProductController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'sku' => ['required', 'string', 'max:50', 'unique:products,sku'],
             'weight_kg' => ['required', 'numeric', 'min:0.01'],
+            'requires_stock' => ['sometimes', 'boolean'],
         ]);
 
-        $product = Product::create($request->only(['name', 'sku', 'weight_kg']));
+        $product = Product::create($request->only(['name', 'sku', 'weight_kg', 'requires_stock']));
 
         AuditLog::log('CREATE', Product::class, $product->id, null, $product->toArray());
 
@@ -72,9 +74,10 @@ class ProductController extends Controller
             'sku' => ['sometimes', 'string', 'max:50', 'unique:products,sku,' . $id],
             'weight_kg' => ['sometimes', 'numeric', 'min:0.01'],
             'status' => ['sometimes', 'in:active,inactive'],
+            'requires_stock' => ['sometimes', 'boolean'],
         ]);
 
-        $product->update($request->only(['name', 'sku', 'weight_kg', 'status']));
+        $product->update($request->only(['name', 'sku', 'weight_kg', 'status', 'requires_stock']));
 
         AuditLog::log('UPDATE', Product::class, $product->id, $oldData, $product->toArray());
 

@@ -18,7 +18,7 @@ import {
 const menuItems = {
     OWNER: [
         { path: '/dashboard', icon: FiHome, label: 'Dashboard' },
-        { path: '/products', icon: FiPackage, label: 'Produk' },
+        { path: '/products', icon: FiPackage, label: 'Produk & Stok' },
         { path: '/prices', icon: FiDollarSign, label: 'Harga' },
         { path: '/customers', icon: FiUsers, label: 'Customer' },
         { path: '/sales', icon: FiShoppingCart, label: 'Penjualan' },
@@ -26,12 +26,11 @@ const menuItems = {
         { path: '/purchases', icon: FiShoppingBag, label: 'Pembelian' },
         { path: '/expenses', icon: FiCreditCard, label: 'Pengeluaran' },
         { path: '/production', icon: FiSettings, label: 'Produksi' },
-        { path: '/inventory', icon: FiBox, label: 'Stok Es' },
         { path: '/reports', icon: FiBarChart2, label: 'Laporan' },
     ],
     ADMIN: [
         { path: '/dashboard', icon: FiHome, label: 'Dashboard' },
-        { path: '/products', icon: FiPackage, label: 'Produk' },
+        { path: '/products', icon: FiPackage, label: 'Produk & Stok' },
         { path: '/prices', icon: FiDollarSign, label: 'Harga' },
         { path: '/customers', icon: FiUsers, label: 'Customer' },
         { path: '/sales', icon: FiShoppingCart, label: 'Penjualan' },
@@ -39,7 +38,6 @@ const menuItems = {
         { path: '/purchases', icon: FiShoppingBag, label: 'Pembelian' },
         { path: '/expenses', icon: FiCreditCard, label: 'Pengeluaran' },
         { path: '/production', icon: FiSettings, label: 'Produksi' },
-        { path: '/inventory', icon: FiBox, label: 'Stok Es' },
         { path: '/reports', icon: FiBarChart2, label: 'Laporan' },
     ],
     KASIR_PABRIK: [
@@ -47,7 +45,7 @@ const menuItems = {
         { path: '/sales/new', icon: FiShoppingCart, label: 'Penjualan Baru' },
         { path: '/sales', icon: FiShoppingCart, label: 'Riwayat Penjualan' },
         { path: '/production', icon: FiSettings, label: 'Produksi' },
-        { path: '/inventory', icon: FiBox, label: 'Stok' },
+        { path: '/products', icon: FiPackage, label: 'Produk & Stok' },
     ],
     SUPPLIER: [
         { path: '/dashboard', icon: FiHome, label: 'Dashboard' },
